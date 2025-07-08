@@ -1,0 +1,1 @@
+npx branch-naming-check "^(feat|fix|chore|refactor|release|hotfix|test|docs)/[a-z0-9-]+$|^develop$"
