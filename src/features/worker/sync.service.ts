@@ -77,7 +77,7 @@ export class SyncService {
     this.logger.log(`[TV] Starting bulk sync for ${tvSeriesIds.length} items.`);
 
     const dtos = await this.getDetailsFromApi<TvSeriesDetailDto>(
-      ContentType.TV,
+      ContentType.TVSERIES,
       tvSeriesIds,
     );
     if (dtos.length === 0) {
@@ -129,12 +129,12 @@ export class SyncService {
 
     const [movieGenres, tvGenres] = await Promise.all([
       this.tmdbApiService.fetchGenres(ContentType.MOVIE),
-      this.tmdbApiService.fetchGenres(ContentType.TV),
+      this.tmdbApiService.fetchGenres(ContentType.TVSERIES),
     ]);
 
     await Promise.all([
       processGenres(movieGenres, ContentType.MOVIE),
-      processGenres(tvGenres, ContentType.TV),
+      processGenres(tvGenres, ContentType.TVSERIES),
     ]);
     this.logger.log('✅ Genre synchronization complete.');
   }
@@ -164,7 +164,7 @@ export class SyncService {
 
     const [movieIds, tvSeriesIds] = await Promise.all([
       fetchIdsFromPages(ContentType.MOVIE),
-      fetchIdsFromPages(ContentType.TV),
+      fetchIdsFromPages(ContentType.TVSERIES),
     ]);
 
     this.logger.log(
@@ -271,7 +271,7 @@ export class SyncService {
         this.genreRepository.findBy({
           externalId: In(genreTmdbIds),
           source: SourceType.TMDB,
-          type: ContentType.TV,
+          type: ContentType.TVSERIES,
         }),
         this.tvSeasonRepository.findBy({
           externalId: In(seasonTmdbIds),

@@ -108,7 +108,7 @@ export class TaskService implements OnModuleInit {
           endDateStr,
         ),
         this.tmdbApiService.fetchChangedIds(
-          ContentType.TV,
+          ContentType.TVSERIES,
           startDateStr,
           endDateStr,
         ),
@@ -174,7 +174,7 @@ export class TaskService implements OnModuleInit {
 
       const [popularMovieIds, popularTvSeriesIds] = await Promise.all([
         fetchAllPopularIds(ContentType.MOVIE),
-        fetchAllPopularIds(ContentType.TV),
+        fetchAllPopularIds(ContentType.TVSERIES),
       ]);
 
       this.logger.log(

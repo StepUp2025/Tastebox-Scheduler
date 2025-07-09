@@ -101,7 +101,7 @@ export class TvSeries extends Content {
     const series = new TvSeries();
     series.externalId = `${dto.id}`;
     series.source = SourceType.TMDB;
-    series.type = ContentType.TV;
+    series.type = ContentType.TVSERIES;
     series.updateFromDto(dto);
     return series;
   }
