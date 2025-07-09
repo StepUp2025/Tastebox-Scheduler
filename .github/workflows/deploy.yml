@@ -1,0 +1,71 @@
+name: Deploy Scheduler to EC2
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Get EC2 Instance ID
+        id: get_instance_id
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=TasteBox-Server" "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+          if [ "$INSTANCE_ID" == "None" ] || [ -z "$INSTANCE_ID" ]; then
+            echo "Error: Could not find running EC2 instance with Name tag 'TasteBox-Server'."
+            exit 1
+          fi
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+
+      - name: Create .env file from secrets
+        run: |
+          echo "MYSQL_HOST=${{ secrets.MYSQL_HOST }}" > .env
+          echo "MYSQL_PORT=${{ secrets.MYSQL_PORT }}" >> .env
+          echo "MYSQL_USERNAME=${{ secrets.MYSQL_USERNAME }}" >> .env
+          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .env
+          echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> .env
+          echo "TMDB_ACCESS_TOKEN=${{ secrets.TMDB_ACCESS_TOKEN }}" >> .env
+          echo "TMDB_API_URL=${{ secrets.TMDB_API_URL }}" >> .env
+
+      - name: Create application artifact
+        run: |
+          git archive --format=tar --output app.tar HEAD
+          gzip app.tar
+
+      - name: Upload artifacts to S3
+        run: |
+          aws s3 cp app.tar.gz s3://s3-tastebox/scheduler/app.tar.gz
+          aws s3 cp .env s3://s3-tastebox/scheduler/.env
+
+      - name: Deploy via SSM Run Command
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ steps.get_instance_id.outputs.instance_id }} \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy TasteBox scheduler application" \
+            --parameters 'commands=[
+              "cd /home/ubuntu",
+              "mkdir -p TasteBox/TasteBox-Scheduler",
+              "aws s3 cp s3://s3-tastebox/scheduler/app.tar.gz .",
+              "tar -xzf app.tar.gz -C ./TasteBox/TasteBox-Scheduler",
+              "aws s3 cp s3://s3-tastebox/scheduler/.env ./TasteBox/TasteBox-Scheduler/.env",
+              "rm app.tar.gz",
+              "cd /home/ubuntu/TasteBox",
+              "sudo docker compose up -d --build scheduler",
+              "sudo docker system prune -f"
+            ]'
