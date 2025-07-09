@@ -14,11 +14,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         username: configService.get<string>('MYSQL_USERNAME'),
         password: configService.get<string>('MYSQL_PASSWORD'),
         database: configService.get<string>('MYSQL_DATABASE'),
-        autoLoadEntities: configService.get<boolean>(
-          'TYPEORM_AUTO_LOAD_ENTITIES',
-        ),
-        synchronize: configService.get<boolean>('TYPEORM_SYNCHRONIZE'),
-        dropSchema: process.env.NODE_ENV !== 'production',
+        autoLoadEntities: true,
       }),
     }),
   ],
