@@ -59,6 +59,16 @@ interface BaseContentDetailDto extends BaseContentListItemDto {
   status: string;
 }
 
+export interface KeywordDto {
+  id: number;
+  name: string;
+}
+
+export interface KeywordsDto {
+  keywords?: KeywordDto[]; // 영화 응답용
+  results?: KeywordDto[]; // TV 시리즈 응답용
+}
+
 // 영화 상세 정보 DTO
 export interface MovieDetailDto extends BaseContentDetailDto {
   title: string;
@@ -68,6 +78,7 @@ export interface MovieDetailDto extends BaseContentDetailDto {
   runtime: number | null;
   video: boolean;
   translations?: TranslationsDto;
+  keywords?: KeywordsDto;
 }
 
 // TV 시즌 상세 정보 DTO
@@ -92,4 +103,5 @@ export interface TvSeriesDetailDto extends BaseContentDetailDto {
   number_of_seasons: number;
   seasons: TvSeasonDetailDto[];
   translations?: TranslationsDto;
+  keywords?: KeywordsDto;
 }

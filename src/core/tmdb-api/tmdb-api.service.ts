@@ -85,7 +85,11 @@ export class TmdbApiService {
   }
 
   // 인기 목록
-  async fetchPopular<T>(type: ContentType, page: number): Promise<T[]> {
+  async fetchPopular<T>(
+    type: ContentType,
+    page: number,
+    withoutKeywordIds?: Set<number>,
+  ): Promise<T[]> {
     const path = `/discover/${type}`;
 
     const discoverParams: Record<string, string | number | boolean> = {
@@ -96,8 +100,10 @@ export class TmdbApiService {
 
     if (type === ContentType.MOVIE) {
       discoverParams.include_video = false;
-      // 👇 다큐멘터리(장르 ID: 99)를 제외하는 파라미터 추가
-      discoverParams.without_genres = '99';
+    }
+
+    if (withoutKeywordIds && withoutKeywordIds.size > 0) {
+      discoverParams.without_keywords = Array.from(withoutKeywordIds).join(',');
     }
 
     const data = await this.throttledGet<{ results: T[] }>(
@@ -109,7 +115,7 @@ export class TmdbApiService {
 
   async fetchDetails<T>(type: ContentType, id: number): Promise<T | null> {
     const detailParams: Record<string, string | number | boolean> = {
-      append_to_response: 'translations',
+      append_to_response: 'translations,keywords',
       language: 'ko-KR',
     };
     return this.throttledGet<T>(`/${type}/${id}`, detailParams);

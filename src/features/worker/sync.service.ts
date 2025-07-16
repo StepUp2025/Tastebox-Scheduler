@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SourceType } from 'src/common/enums/source-type.enum';
+import { parseTmdbExcludedKeywords } from 'src/common/enums/utils/tmdb-filter.util';
 import { DataSource, In, Repository } from 'typeorm';
 import { ContentType } from '../../common/enums/content-type.enum';
 import {
@@ -32,6 +34,8 @@ export class SyncService {
   private readonly INITIAL_BULK_LOAD_PAGES = 100;
   // DB 저장을 위한 Chunk 크기 (한 번에 저장할 엔티티 수)
   private readonly DB_SAVE_CHUNK_SIZE = 50;
+  // 제외할 배포사
+  private readonly excludedKeywordIds: Set<number>;
 
   constructor(
     @InjectRepository(Genre)
@@ -45,9 +49,15 @@ export class SyncService {
     @InjectRepository(ContentGenre)
     private readonly contentGenreRepository: Repository<ContentGenre>,
     private readonly tmdbApiService: TmdbApiService,
-
+    private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) {
+    const excludeKeywords = this.configService.get<string>(
+      'TMDB_EXCLUDED_KEYWORD_IDS',
+      '',
+    );
+    this.excludedKeywordIds = parseTmdbExcludedKeywords(excludeKeywords);
+  }
 
   public async syncMoviesByIds(movieIds: number[]): Promise<void> {
     if (movieIds.length === 0) return;
@@ -58,13 +68,15 @@ export class SyncService {
       movieIds,
     );
 
-    if (dtos.length === 0) {
+    const filteredDtos = this.filterByKeywords(dtos);
+
+    if (filteredDtos.length === 0) {
       this.logger.warn('[Movie] No valid movie details found to sync.');
       return;
     }
 
-    const dbData = await this.findMovieDataFromDb(dtos);
-    const moviesToSave = this.buildMovieEntities(dtos, dbData);
+    const dbData = await this.findMovieDataFromDb(filteredDtos);
+    const moviesToSave = this.buildMovieEntities(filteredDtos, dbData);
     await this.saveMoviesInTransaction(moviesToSave);
 
     this.logger.log(
@@ -80,13 +92,15 @@ export class SyncService {
       ContentType.TVSERIES,
       tvSeriesIds,
     );
-    if (dtos.length === 0) {
+
+    const filteredDtos = this.filterByKeywords(dtos);
+    if (filteredDtos.length === 0) {
       this.logger.warn('[TV] No valid TV series details found to sync.');
       return;
     }
 
-    const dbData = await this.findTvSeriesDataFromDb(dtos);
-    const seriesToSave = this.buildTvSeriesEntities(dtos, dbData);
+    const dbData = await this.findTvSeriesDataFromDb(filteredDtos);
+    const seriesToSave = this.buildTvSeriesEntities(filteredDtos, dbData);
     await this.saveTvSeriesInTransaction(seriesToSave);
 
     this.logger.log(
@@ -155,6 +169,7 @@ export class SyncService {
         const items = await this.tmdbApiService.fetchPopular<{ id: number }>(
           contentType,
           i,
+          this.excludedKeywordIds,
         );
         if (items.length === 0) break;
         ids.push(...items.map((item) => item.id));
@@ -416,5 +431,45 @@ export class SyncService {
         });
       }
     });
+  }
+
+  private filterByKeywords<
+    T extends {
+      keywords?: {
+        keywords?: { id: number; name: string }[];
+        results?: { id: number; name: string }[];
+      };
+    },
+  >(dtos: T[]): T[] {
+    if (this.excludedKeywordIds.size === 0) {
+      return dtos;
+    }
+
+    const filtered = dtos.filter((dto) => !this.hasExcludedKeyword(dto));
+    const excludedCount = dtos.length - filtered.length;
+
+    if (excludedCount > 0) {
+      this.logger.log(`[Filter] Excluded ${excludedCount} items by keyword.`);
+    }
+
+    return filtered;
+  }
+
+  private hasExcludedKeyword(dto: {
+    keywords?: {
+      keywords?: { id: number; name: string }[];
+      results?: { id: number; name: string }[];
+    };
+  }): boolean {
+    if (this.excludedKeywordIds.size === 0) {
+      return false;
+    }
+
+    const keywords = dto.keywords?.keywords || dto.keywords?.results || [];
+    if (keywords.length === 0) {
+      return false;
+    }
+
+    return keywords.some((keyword) => this.excludedKeywordIds.has(keyword.id));
   }
 }
