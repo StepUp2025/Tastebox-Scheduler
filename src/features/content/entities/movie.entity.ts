@@ -68,7 +68,7 @@ export class Movie extends Content {
       this.englishTitle = englishTranslation?.data?.title ?? null;
 
       const koreanTranslation = translations.find((t) => t.iso_639_1 === 'ko');
-      this.hasKoreanTitle = !!koreanTranslation?.data?.title;
+      this.hasKoreanTitle = !!koreanTranslation;
     } else {
       this.hasKoreanTitle = false;
     }
