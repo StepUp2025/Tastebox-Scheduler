@@ -66,7 +66,10 @@ export class TaskService implements OnModuleInit {
     this.logger.log('✅ Initial sync sequences finished.');
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_4AM, { name: 'incrementalMetadataSync' })
+  @Cron(CronExpression.EVERY_DAY_AT_4AM, {
+    name: 'incrementalMetadataSync',
+    timeZone: 'Asia/Seoul',
+  })
   async handleIncrementalSync() {
     if (this.isSyncingMetadata) {
       this.logger.warn(
