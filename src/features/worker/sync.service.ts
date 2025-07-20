@@ -197,7 +197,7 @@ export class SyncService {
   /**
    * TMDB API에서 콘텐츠 상세 정보를 가져옵니다.
    */
-  private async getDetailsFromApi<T>(
+  private async getDetailsFromApi<T extends { adult: boolean }>(
     type: ContentType,
     ids: number[],
   ): Promise<T[]> {
@@ -209,7 +209,9 @@ export class SyncService {
 
     for (const dto of dtos) {
       if (dto !== null) {
-        results.push(dto);
+        if (!dto.adult) {
+          results.push(dto);
+        }
       }
     }
 

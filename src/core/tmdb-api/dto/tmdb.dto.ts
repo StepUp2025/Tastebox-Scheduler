@@ -28,6 +28,7 @@ export interface GenreDto {
 // '인기 목록' 등 목록 API에서 오는 기본 정보
 export interface BaseContentListItemDto {
   id: number;
+  adult: boolean;
   overview: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -43,7 +44,6 @@ export interface MovieListItemDto extends BaseContentListItemDto {
   title: string;
   original_title: string;
   release_date: string;
-  adult: boolean;
 }
 
 // TV 시리즈 목록 아이템 DTO
@@ -74,7 +74,6 @@ export interface MovieDetailDto extends BaseContentDetailDto {
   title: string;
   original_title: string;
   release_date: string;
-  adult: boolean;
   runtime: number | null;
   video: boolean;
   translations?: TranslationsDto;
